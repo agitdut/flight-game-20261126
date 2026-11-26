@@ -38,6 +38,9 @@ export class Obstacle {
     this.z = z;
     this.radius = radius;
     this.phase = Math.random() * Math.PI * 2;
+    // Awan badai melayang pelan menyamping; burung terbang melintasi koridor.
+    this.drift = kind === 'storm' ? (Math.random() - 0.5) * 5 : 0;
+    this.flySpeed = kind === 'bird' ? (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 4) : 0;
   }
 }
 

@@ -161,6 +161,28 @@ export class Renderer {
         ctx.lineTo(d.x, d.y);
         ctx.closePath();
         ctx.fill();
+        // Tekstur petak: bayangan dalam + rumpun pohon sesekali, supaya
+        // ladang tidak terlihat seperti blok warna polos dari kejauhan.
+        const detail = cellHash(cx, Math.floor(z0 / 25), 99);
+        if (detail < 0.45) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.10)';
+          ctx.beginPath();
+          ctx.moveTo(lerp(a.x, b.x, 0.25), lerp(a.y, b.y, 0.25));
+          ctx.lineTo(lerp(b.x, a.x, 0.25), lerp(b.y, a.y, 0.25));
+          ctx.lineTo(lerp(c.x, d.x, 0.25), lerp(c.y, d.y, 0.25));
+          ctx.lineTo(lerp(d.x, c.x, 0.25), lerp(d.y, c.y, 0.25));
+          ctx.closePath();
+          ctx.fill();
+        } else if (detail > 0.96) {
+          // Rumpun pohon kecil: jarang, mungil, lonjong seperti semak.
+          const tx = (a.x + b.x + c.x + d.x) / 4;
+          const ty = (a.y + b.y + c.y + d.y) / 4;
+          const tr = Math.max(1, 1.1 * a.s);
+          ctx.fillStyle = 'rgba(38, 84, 38, 0.9)';
+          ctx.beginPath();
+          ctx.ellipse(tx, ty, tr, tr * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
       // Jalan utama membelah petak.
       for (const rx of world.roadX()) {
@@ -253,14 +275,50 @@ export class Renderer {
           ctx.fill();
         }
       }
+      // Lampu tepi landasan: titik kuning menyala di kedua sisi, supaya
+      // landasan terbaca dari jauh saat approach.
+      for (const ex of [-9.5, 9.5]) {
+        const e = this.project(ex, 0.4, z, cam, p.heading, p.pitch);
+        if (!e) continue;
+        const r = Math.max(1.2, 3.2 * e.s);
+        ctx.save();
+        ctx.fillStyle = '#ffd23e';
+        ctx.shadowColor = '#ffd23e';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
-    // Ambang landasan: garis putih tebal di kedua ujung.
+    // Lampu approach: baris cahaya putih menuju ambang landasan.
+    for (let z = zStart - 160; z < zStart - 10; z += 20) {
+      const a = this.project(-5, 0.3, z, cam, p.heading, p.pitch);
+      const b = this.project(5, 0.3, z, cam, p.heading, p.pitch);
+      const c = this.project(5, 0.3, z + 8, cam, p.heading, p.pitch);
+      const d = this.project(-5, 0.3, z + 8, cam, p.heading, p.pitch);
+      if (!a || !b || !c || !d) continue;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 244, 200, 0.95)';
+      ctx.shadowColor = '#fff3c4';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    // Ambang landasan: empat bilah putih (piano keys) di kedua ujung.
     for (const zt of [zStart, zEnd - 6]) {
-      const a = this.project(-8, 0.2, zt, cam, p.heading, p.pitch);
-      const b = this.project(8, 0.2, zt, cam, p.heading, p.pitch);
-      const c = this.project(8, 0.2, zt + 6, cam, p.heading, p.pitch);
-      const d = this.project(-8, 0.2, zt + 6, cam, p.heading, p.pitch);
-      if (a && b && c && d) {
+      for (const bcx of [-6.4, -2.2, 2.2, 6.4]) {
+        const a = this.project(bcx - 1.3, 0.2, zt, cam, p.heading, p.pitch);
+        const b = this.project(bcx + 1.3, 0.2, zt, cam, p.heading, p.pitch);
+        const c = this.project(bcx + 1.3, 0.2, zt + 6, cam, p.heading, p.pitch);
+        const d = this.project(bcx - 1.3, 0.2, zt + 6, cam, p.heading, p.pitch);
+        if (!a || !b || !c || !d) continue;
         ctx.fillStyle = COLORS.runwayMark;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
@@ -661,6 +719,38 @@ export class Renderer {
         W / 2,
         H - 178,
       );
+    }
+    // Beacon ambang landasan: berlian berdenyut + jarak, supaya landasan
+    // selalu terbaca dari kejauhan saat approach.
+    if (p.z < state.world.runwayEndZ && p.z > state.world.runwayEndZ - 900 && !p.landed) {
+      const cam = this.camera(p);
+      const bp = this.project(0, 4, state.world.runwayEndZ, cam, p.heading, p.pitch);
+      if (bp && bp.y > 90 && bp.y < H - 200) {
+        const pulse = 0.6 + 0.4 * Math.sin(state.time * 5);
+        const bx = clamp(bp.x, 90, W - 90);
+        const by = clamp(bp.y, 100, H - 220);
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.strokeStyle = '#ffd23e';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(bx, by - 16);
+        ctx.lineTo(bx + 14, by);
+        ctx.lineTo(bx, by + 16);
+        ctx.lineTo(bx - 14, by);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fillStyle = '#ffd23e';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.strokeText(`LANDASAN ${Math.round(state.world.runwayEndZ - p.z)} m`, bx, by - 26);
+        ctx.fillText(`LANDASAN ${Math.round(state.world.runwayEndZ - p.z)} m`, bx, by - 26);
+        ctx.restore();
+      }
     }
     ctx.restore();
   }

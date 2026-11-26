@@ -50,13 +50,14 @@ export function applyShot(game, shot) {
   }
   if (shot === 'landing') {
     // Final approach Leg 1: landasan di depan, pesawat sejajar, roda turun.
+    // Jarak 260 m supaya landasan + lampu approach mengisi frame.
     g.startLeg(0);
     g.mode = 'flying';
     g.plane.onGround = false;
     g.plane.x = 1.5;
-    g.plane.y = 26;
-    g.plane.z = g.world.runwayEndZ - 420;
-    g.plane.speed = 96;
+    g.plane.y = 20;
+    g.plane.z = g.world.runwayEndZ - 260;
+    g.plane.speed = 92;
     g.plane.throttle = 0.34;
     g.plane.pitch = -0.06;
     g.plane.bank = 0.02;
@@ -69,7 +70,7 @@ export function applyShot(game, shot) {
       r.passed = true;
     });
     g.time = 61.2;
-    g.messages = [{ text: 'SEMUA RING DILEWATI — MENDARAT!', color: '#ffd23e', at: 60.4 }];
+    g.messages = [{ text: 'SEMUA RING DILEWATI — MENDARAT!', color: '#ffd23e', at: 61.4 }];
     return;
   }
   if (shot === 'end') {

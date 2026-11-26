@@ -184,6 +184,18 @@ export class Game {
     this.legTime += STEP;
     this.time += STEP;
 
+    // Rintangan hidup: awan badai melayang, burung melintasi koridor.
+    for (const ob of this.world.obstacles) {
+      if (ob.kind === 'storm') {
+        ob.x += ob.drift * STEP;
+        if (ob.x > 58 || ob.x < -58) ob.drift = -ob.drift;
+      } else if (ob.kind === 'bird') {
+        ob.x += ob.flySpeed * STEP;
+        if (ob.x > 62) ob.x = -62;
+        if (ob.x < -62) ob.x = 62;
+      }
+    }
+
     // Alarm stall berkala (maksimal tiap 1,2 detik).
     if (p.stalling && !p.onGround && this.time - this.alarmedAt > 1.2) {
       this.alarmedAt = this.time;
